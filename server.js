@@ -61,6 +61,12 @@ mongoose.connect(db, { useNewUrlParser: true, useUnifiedTopology: true, useCreat
   .then(() => console.log("MongoDB successfully connected"))
   .catch((err) => console.log(err));
 
+
+  app.get('/', (req, res) => {
+    res.sendStatus(200)
+  })
+  
+
 // Passport middleware
 app.use(passport.initialize());
 // Passport config
