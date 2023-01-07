@@ -9,6 +9,7 @@ const Post = require("../../models/Post");
 
 var storage = multer.memoryStorage();
 var upload = multer({ storage: storage });
+const parser = require("../../config/cloudinaryImage");
 
 let s3bucket = new AWS.S3({
   accessKeyId: keys.awsaccesskey,
@@ -55,7 +56,7 @@ router.get("/getPosts/:uid", (req, res) => {
 
 router.post(
   "/addPost",
-  upload.fields([
+  parser.fields([
     {
       name: "photo",
       maxCount: 1,
@@ -66,28 +67,28 @@ router.post(
     },
   ]),
   (req, res) => {
-    var promises = [];
-    var file;
-    var photo;
-    const s3FileURL = keys.awsuploadedfileurl;
-    if (req.files.photo) {
-      photo = req.files.photo[0];
-      promises.push(uploadLoadToS3(photo));
-    }
-    if (req.files.file) {
-      file = req.files.file[0];
-      promises.push(uploadLoadToS3(file));
-    }
+    // var promises = [];
+    // var file;
+    // var photo;
+    // const s3FileURL = keys.awsuploadedfileurl;
+    // if (req.files.photo) {
+    //   photo = req.files.photo[0];
+    //   promises.push(uploadLoadToS3(photo));
+    // }
+    // if (req.files.file) {
+    //   file = req.files.file[0];
+    //   promises.push(uploadLoadToS3(file));
+    // }
 
-    Promise.all(promises)
-      .then(function (data) {
+    // Promise.all(promises)
+    //   .then(function (data) {
         const newPost = new Post({
           id: req.body.id,
           message: req.body.message,
-          file: file ? s3FileURL + file.originalname : "",
-          photo: photo ? s3FileURL + photo.originalname : "",
-          s3_file_key: file ? file.originalname : "",
-          s3_photo_key: photo ? photo.originalname : "",
+          file: req.files.file ? req.files.file[0].path : "",
+          photo: req.files.photo ? req.files.photo[0].path : "",
+          s3_file_key: req.files.file ? req.files.file[0].path : "",
+          s3_photo_key: req.files.photo ? req.files.photo[0].path : "",
           type: req.body.category,
         });
 
@@ -95,10 +96,10 @@ router.post(
           .save()
           .then((post) => res.json(post))
           .catch((err) => console.log(err));
-      })
-      .catch(function (err) {
-        res.send(err.stack);
-      });
+      // })
+      // .catch(function (err) {
+      //   res.send(err.stack);
+      // });
   }
 );
 

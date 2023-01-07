@@ -5,6 +5,7 @@ const keys = require("../../config/keys");
 const Event = require("../../models/Event");
 const multer = require("multer");
 var AWS = require("aws-sdk");
+const parser = require("../../config/cloudinaryImage");
 
 var storage = multer.memoryStorage();
 var upload = multer({ storage: storage });
@@ -15,49 +16,48 @@ router.get("/getevents", (req, res) => {
     .catch((err) => res.status(400).json("Error: " + err));
 });
 
-router.post("/addEvent", upload.single("file"), (req, res) => {
+router.post("/addEvent", parser.single("file"), (req, res) => {
   const file = req.file;
-  const s3FileURL = keys.awsuploadedfileurl;
+  // const s3FileURL = keys.awsuploadedfileurl;
 
-  let s3bucket = new AWS.S3({
-    accessKeyId: keys.awsaccesskey,
-    secretAccessKey: keys.awssecretkey,
-    region: keys.awsregion,
+  // let s3bucket = new AWS.S3({
+  //   accessKeyId: keys.awsaccesskey,
+  //   secretAccessKey: keys.awssecretkey,
+  //   region: keys.awsregion,
+  // });
+
+  // var params = {
+  //   Bucket: keys.awsbucketname,
+  //   Key: file.originalname,
+  //   Body: file.buffer,
+  //   ContentType: file.mimetype,
+  //   ACL: "public-read",
+  // };
+
+  // s3bucket.upload(params, function (err, data) {
+  //   if (err) {
+  //     res.status(500).json({ error: true, Message: err });
+  //   } else {
+  const newEvent = new Event({
+    name: req.body.name,
+    image: file.path,
+    s3_key: file.path,
+    date: new Date(req.body.date),
+    location: req.body.location,
+    topic: req.body.topic,
+    type: req.body.type,
   });
 
-  var params = {
-    Bucket: keys.awsbucketname,
-    Key: file.originalname,
-    Body: file.buffer,
-    ContentType: file.mimetype,
-    ACL: "public-read",
-  };
-
-  s3bucket.upload(params, function (err, data) {
-    if (err) {
-      res.status(500).json({ error: true, Message: err });
-    } else {
-      const newEvent = new Event({
-        name: req.body.name,
-        image: s3FileURL + file.originalname,
-        s3_key: params.Key,
-        date: new Date(req.body.date),
-        location: req.body.location,
-        topic: req.body.topic,
-        type:req.body.type
-      });
-
-      newEvent
-        .save()
-        .then((event) => res.json(event))
-        .catch((err) => console.log(err));
-    }
-  });
+  newEvent
+    .save()
+    .then((event) => res.json(event))
+    .catch((err) => console.log(err));
+  //   }
+  // });
 });
 
 router.delete("/deleteEvent", (req, res) => {
   Event.findByIdAndDelete(req.body.id, (err, result) => {
-
     if (err) {
       console.log(err);
     }
@@ -67,8 +67,6 @@ router.delete("/deleteEvent", (req, res) => {
       secretAccessKey: keys.awssecretkey,
       region: keys.awsregion,
     });
-
-
 
     var params = {
       Bucket: keys.awsbucketname,
@@ -102,6 +100,5 @@ router.delete("/deleteEvent/:id", (req, res) => {
     });
   });
 });
-
 
 module.exports = router;

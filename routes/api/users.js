@@ -13,6 +13,8 @@ const multer = require("multer");
 var AWS = require("aws-sdk");
 var storage = multer.memoryStorage();
 var upload = multer({ storage: storage });
+const parser = require("../../config/cloudinaryImage");
+
 let s3bucket = new AWS.S3({
   accessKeyId: keys.awsaccesskey,
   secretAccessKey: keys.awssecretkey,
@@ -212,69 +214,65 @@ router.put("/:id/unfollow", async (req, res) => {
   }
 });
 
-router.post(
-  "/:uid/edit",
-  upload.fields([
-    {
-      name: "avatar",
-      maxCount: 1,
-    },
-  ]),
-  async (req, res) => {
-    var promises = [];
-    var avatar;
-    const s3FileURL = keys.awsuploadedfileurl;
-    if (req.files.avatar) {
-      avatar = req.files.avatar[0];
-      promises.push(uploadLoadToS3(avatar));
-    }
+router.post("/:uid/edit", parser.single("avatar"), async (req, res) => {
+  // var promises = [];
+  // var avatar;
+  // const s3FileURL = keys.awsuploadedfileurl;
 
-    const { name, designation, email, dept, prgrm, year, DOB } = req.body;
-
-    Promise.all(promises)
-      .then(function (data) {
-        User.findOneAndUpdate(
-          { id: req.params.uid },
-          {
-            name,
-            designation,
-            email,
-            dept,
-            prgrm,
-            year,
-            DOB,
-            avatar: s3FileURL + avatar.originalname,
-          }
-        )
-          .then((result) => {
-            res.json(result);
-          })
-          .catch((err) => console.log(err));
-      })
-      .catch(function (err) {
-        res.send(err.stack);
-      });
-
-    if (!avatar) {
-      User.findOneAndUpdate(
-        { id: req.params.uid },
-        {
-          name,
-          designation,
-          email,
-          dept,
-          prgrm,
-          year,
-          DOB
-        }
-      )
-        .then((result) => {
-          res.json(result);
-        })
-        .catch((err) => console.log(err));
-    }
+  if (req.files) {
+    avatar = req.file;
+    // promises.push(uploadLoadToS3(avatar));
   }
-);
+
+  const { name, designation, email, dept, prgrm, year, DOB } = req.body;
+
+  // Promise.all(promises)
+  //   .then(function (data) {
+  
+  // })
+  // .catch(function (err) {
+  //   res.send(err.stack);
+  // });
+
+  console.log(!req.file);
+
+  if (!req.file) {
+    User.findOneAndUpdate(
+      { id: req.params.uid },
+      {
+        name,
+        designation,
+        email,
+        dept,
+        prgrm,
+        year,
+        DOB,
+      }
+    )
+      .then((result) => {
+        res.json(result);
+      })
+      .catch((err) => console.log(err));
+  }else{
+    User.findOneAndUpdate(
+      { id: req.params.uid },
+      {
+        name,
+        designation,
+        email,
+        dept,
+        prgrm,
+        year,
+        DOB,
+        avatar: req.file.path,
+      }
+    )
+      .then((result) => {
+        res.json(result);
+      })
+      .catch((err) => console.log(err));
+  }
+});
 
 router.post("/getUsers", async (req, res) => {
   try {
@@ -284,30 +282,29 @@ router.post("/getUsers", async (req, res) => {
     const dept = req.body.dept || "";
     const prgrm = req.body.prgrm || "";
 
-    const users = await User.find({ 
-      name: { $regex: name, $options: "i" } ,
+    const users = await User.find({
+      name: { $regex: name, $options: "i" },
       year: { $regex: year, $options: "i" },
       dept: { $regex: dept, $options: "i" },
       prgrm: { $regex: prgrm, $options: "i" },
-      id:{$nin:[req.body.cid]},
+      id: { $nin: [req.body.cid] },
     })
       .sort("year")
       .skip(page * 5)
       .limit(5);
 
+    const total = await User.countDocuments({
+      name: { $regex: name, $options: "i" },
+      year: { $regex: year, $options: "i" },
+      dept: { $regex: dept, $options: "i" },
+      prgrm: { $regex: prgrm, $options: "i" },
+    });
 
-      const total = await User.countDocuments({ 
-        name: { $regex: name, $options: "i" } ,
-        year: { $regex: year, $options: "i" },
-        dept: { $regex: dept, $options: "i" },
-        prgrm: { $regex: prgrm, $options: "i" },
-      })
-
-      const response = {
-        total:total-1,
-        page: page + 1,
-        users,
-      };
+    const response = {
+      total: total - 1,
+      page: page + 1,
+      users,
+    };
 
     res.status(200).json(response);
   } catch (err) {
@@ -317,14 +314,11 @@ router.post("/getUsers", async (req, res) => {
 });
 
 router.post("/getBdays", async (req, res) => {
-
   User.find({ DOB: { $regex: req.body.DOB, $options: "i" } })
-  .then((users) => {
-    res.json(users);
-  })
-  .catch((err) => res.status(400).json("Error: " + err));
-
+    .then((users) => {
+      res.json(users);
+    })
+    .catch((err) => res.status(400).json("Error: " + err));
 });
-
 
 module.exports = router;
